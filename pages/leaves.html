@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leave requests · HCM Lite</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <div id="nav-mount"></div>
+    <main>
+      <div class="page-head">
+        <h1>Leave requests</h1>
+        <select id="statusFilter" style="max-width: 200px">
+          <option value="pending">Pending</option>
+          <option value="all">All</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div class="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Type</th>
+              <th>Dates</th>
+              <th>Days</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="leaveRows"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script src="../js/storage.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/attendance.js"></script>
+    <script src="../js/leave.js"></script>
+    <script>
+      const user = requireRole('admin');
+      if (user) {
+        renderChrome(user, 'Leaves');
+
+        function refreshLeaveView() {
+          const f = document.getElementById('statusFilter').value;
+          let rows = getLeaves().sort(
+            (a, b) =>
+              (a.status === 'pending' ? -1 : 1) -
+              (b.status === 'pending' ? -1 : 1),
+          );
+          if (f !== 'all') rows = rows.filter((l) => l.status === f);
+          renderLeavesTable('leaveRows', rows, true, true);
+        }
+        window.refreshLeaveView = refreshLeaveView;
+        document.getElementById('statusFilter').onchange = refreshLeaveView;
+        refreshLeaveView();
+      }
+    </script>
+  </body>
+</html>

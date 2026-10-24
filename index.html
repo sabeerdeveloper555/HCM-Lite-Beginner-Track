@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HCM Lite · Login</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="auth-shell">
+      <div class="auth-card">
+        <span class="logo">H</span>
+        <h2 id="cardTitle">HCM Lite</h2>
+        <p class="muted" id="cardSub">
+          Human Capital Management — sign in to continue.
+        </p>
+
+        <!-- FIRST-RUN SETUP -->
+        <form id="setupForm" class="hidden" novalidate>
+          <div class="tabs" style="margin-bottom: 1rem">
+            <button type="button" class="active">Company setup</button>
+          </div>
+          <label
+            >Company name *<input
+              id="s_company"
+              placeholder="Acme Pvt Ltd" /><span
+              class="field-error"
+              data-for="s_company"
+            ></span
+          ></label>
+          <label
+            >Your name *<input id="s_name" placeholder="Ali Khan" /><span
+              class="field-error"
+              data-for="s_name"
+            ></span
+          ></label>
+          <label
+            >Admin email *<input
+              id="s_email"
+              type="email"
+              placeholder="admin@acme.com" /><span
+              class="field-error"
+              data-for="s_email"
+            ></span
+          ></label>
+          <label
+            >Password *<input
+              id="s_pw"
+              type="password"
+              placeholder="min 4 characters" /><span
+              class="field-error"
+              data-for="s_pw"
+            ></span
+          ></label>
+          <button class="btn btn-block" type="submit">
+            Create company &amp; admin
+          </button>
+          <p class="muted" style="margin-top: 0.8rem; font-size: 0.85rem">
+            This is the first run — you'll become the Admin.
+          </p>
+        </form>
+
+        <!-- LOGIN -->
+        <form id="loginForm" novalidate>
+          <label
+            >Email *<input
+              id="l_email"
+              type="email"
+              placeholder="you@company.com"
+              autocomplete="username" /><span
+              class="field-error"
+              data-for="l_email"
+            ></span
+          ></label>
+          <label
+            >Password *<input
+              id="l_pw"
+              type="password"
+              placeholder="Your password"
+              autocomplete="current-password" /><span
+              class="field-error"
+              data-for="l_pw"
+            ></span
+          ></label>
+          <button class="btn btn-block" type="submit">Sign in</button>
+          <p class="error" id="loginError" style="margin-top: 0.8rem"></p>
+        </form>
+      </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+      // already logged in? go to dashboard
+      (function () {
+        const u = currentUser();
+        if (u) {
+          location.href =
+            u.role === 'admin' ? 'pages/admin.html' : 'pages/employee.html';
+          return;
+        }
+
+        const setup = isSetupDone();
+        document.getElementById('setupForm').classList.toggle('hidden', setup);
+        document.getElementById('loginForm').classList.toggle('hidden', !setup);
+        if (!setup) {
+          document.getElementById('cardTitle').textContent =
+            'Welcome to HCM Lite';
+          document.getElementById('cardSub').textContent =
+            'Set up your company and admin account to begin.';
+        }
+      })();
+
+      function showErr(id, msg) {
+        const el = document.querySelector(`.field-error[data-for="${id}"]`);
+        const input = document.getElementById(id);
+        if (el) el.textContent = msg || '';
+        if (input) input.classList.toggle('invalid', !!msg);
+      }
+
+      // ---- setup submit ----
+      document
+        .getElementById('setupForm')
+        .addEventListener('submit', function (e) {
+          e.preventDefault();
+          ['s_company', 's_name', 's_email', 's_pw'].forEach((id) =>
+            showErr(id, ''),
+          );
+          let ok = true;
+          if (!document.getElementById('s_company').value.trim()) {
+            showErr('s_company', 'Required');
+            ok = false;
+          }
+          if (!document.getElementById('s_name').value.trim()) {
+            showErr('s_name', 'Required');
+            ok = false;
+          }
+          if (!validEmail(document.getElementById('s_email').value)) {
+            showErr('s_email', 'Valid email required');
+            ok = false;
+          }
+          if (findUserByEmail(document.getElementById('s_email').value)) {
+            showErr('s_email', 'Email already used');
+            ok = false;
+          }
+          if (document.getElementById('s_pw').value.length < 4) {
+            showErr('s_pw', 'Min 4 characters');
+            ok = false;
+          }
+          if (!ok) return;
+          try {
+            completeSetup({
+              name: document.getElementById('s_company').value,
+              adminName: document.getElementById('s_name').value,
+              adminEmail: document.getElementById('s_email').value,
+              password: document.getElementById('s_pw').value,
+            });
+            login(
+              document.getElementById('s_email').value,
+              document.getElementById('s_pw').value,
+            );
+            location.href = 'pages/admin.html';
+          } catch (err) {
+            document.getElementById('loginError').textContent = err.message;
+          }
+        });
+
+      // ---- login submit ----
+      document
+        .getElementById('loginForm')
+        .addEventListener('submit', function (e) {
+          e.preventDefault();
+          showErr('l_email', '');
+          showErr('l_pw', '');
+          document.getElementById('loginError').textContent = '';
+          const email = document.getElementById('l_email').value;
+          const pw = document.getElementById('l_pw').value;
+          if (!validEmail(email)) {
+            showErr('l_email', 'Valid email required');
+            return;
+          }
+          if (!pw) {
+            showErr('l_pw', 'Required');
+            return;
+          }
+          const res = login(email, pw);
+          if (!res.ok) {
+            document.getElementById('loginError').textContent = res.error;
+            return;
+          }
+          location.href =
+            res.user.role === 'admin'
+              ? 'pages/admin.html'
+              : 'pages/employee.html';
+        });
+    </script>
+  </body>
+</html>

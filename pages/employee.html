@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My dashboard · HCM Lite</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <div id="nav-mount"></div>
+    <main>
+      <div class="page-head">
+        <div>
+          <h1 id="hello">My dashboard</h1>
+          <p class="muted" id="todayLine"></p>
+        </div>
+      </div>
+
+      <div class="grid cols-4">
+        <div class="card stat">
+          <span class="num blue" id="st_present">0</span
+          ><span class="muted">Days present</span>
+        </div>
+        <div class="card stat">
+          <span class="num amber" id="st_late">0</span
+          ><span class="muted">Times late</span>
+        </div>
+        <div class="card stat">
+          <span class="num red" id="st_half">0</span
+          ><span class="muted">Half days</span>
+        </div>
+        <div class="card stat">
+          <span class="num green" id="st_leave">0</span
+          ><span class="muted">Leave days left</span>
+        </div>
+      </div>
+
+      <!-- check in / out -->
+      <div class="card" style="margin-top: 1rem">
+        <div class="page-head">
+          <h3>Attendance today</h3>
+          <span id="todayStatus"></span>
+        </div>
+        <p class="muted" id="todayDetail">—</p>
+        <div class="chips">
+          <button class="btn" id="inBtn">Check in</button>
+          <button class="btn btn-ghost" id="outBtn">Check out</button>
+        </div>
+      </div>
+
+      <div class="grid cols-2" style="margin-top: 1rem">
+        <!-- apply leave -->
+        <div class="card">
+          <h3>Apply for leave</h3>
+          <form id="leaveForm" novalidate>
+            <label
+              >Type
+              <select id="lv_type">
+                <option value="">Select…</option>
+              </select>
+              <span class="field-error" data-for="type"></span>
+            </label>
+            <div class="grid cols-2">
+              <label
+                >From<input id="lv_from" type="date" /><span
+                  class="field-error"
+                  data-for="from"
+                ></span
+              ></label>
+              <label
+                >To<input id="lv_to" type="date" /><span
+                  class="field-error"
+                  data-for="to"
+                ></span
+              ></label>
+            </div>
+            <label
+              >Reason<textarea
+                id="lv_reason"
+                rows="2"
+                placeholder="Brief reason"
+              ></textarea>
+            </label>
+            <button class="btn btn-block" type="submit">Submit request</button>
+          </form>
+        </div>
+
+        <!-- smart helper -->
+        <div class="card">
+          <h3>Smart helper</h3>
+          <div class="chat">
+            <div class="chat-log" id="chatLog"></div>
+            <div class="chips">
+              <button class="chip" data-q="How many leaves do I have left?">
+                Leave balance
+              </button>
+              <button class="chip" data-q="Was I late today?">
+                Late today
+              </button>
+              <button
+                class="chip"
+                data-q="How many hours did I work this week?"
+              >
+                Hours this week
+              </button>
+              <button class="chip" data-q="What is my payslip this month?">
+                My payslip
+              </button>
+            </div>
+            <div class="chat-input">
+              <input id="chatInput" placeholder="Ask about my data…" /><button
+                class="btn"
+                id="chatSend"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- my attendance -->
+      <div class="card" style="margin-top: 1rem">
+        <h3>My attendance</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Check-in</th>
+                <th>Check-out</th>
+                <th>Hours</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="myAtt"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- my leaves -->
+      <div class="card" style="margin-top: 1rem">
+        <h3>My leave requests</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Dates</th>
+                <th>Days</th>
+                <th>Reason</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="myLeaves"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- announcements -->
+      <div class="card" style="margin-top: 1rem">
+        <h3>Announcements</h3>
+        <div id="annList"></div>
+      </div>
+    </main>
+
+    <script src="../js/storage.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/attendance.js"></script>
+    <script src="../js/leave.js"></script>
+    <script src="../js/payslip.js"></script>
+    <script src="../js/helper.js"></script>
+    <script src="../js/announcements.js"></script>
+    <script>
+      const user = requireRole('employee');
+      if (user) {
+        renderChrome(user, 'Dashboard');
+        document.getElementById('hello').textContent =
+          `Hi, ${user.name.split(' ')[0]}`;
+
+        // leave type options
+        document.getElementById('lv_type').innerHTML =
+          `<option value="">Select…</option>` +
+          LEAVE_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+
+        function setError(k, msg) {
+          const el = document.querySelector(`.field-error[data-for="${k}"]`);
+          if (el) el.textContent = msg || '';
+        }
+
+        function refresh() {
+          const recs = attendanceFor(user.id);
+          document.getElementById('st_present').textContent = recs.filter(
+            (r) => r.status === 'present',
+          ).length;
+          document.getElementById('st_late').textContent = recs.filter(
+            (r) => r.status === 'late',
+          ).length;
+          document.getElementById('st_half').textContent = recs.filter(
+            (r) => r.status === 'half day',
+          ).length;
+          document.getElementById('st_leave').textContent = leaveBalance(
+            user.id,
+          ).left;
+
+          // today
+          const rec = todayAttendance(user.id);
+          document.getElementById('todayLine').textContent =
+            new Date().toDateString();
+          document.getElementById('todayStatus').innerHTML = rec
+            ? pill(rec.status)
+            : '<span class="pill absent">Not checked in</span>';
+          document.getElementById('todayDetail').textContent = rec
+            ? `In ${rec.checkIn}${rec.checkOut ? ' · Out ' + rec.checkOut + ' · ' + workedHours(rec.checkIn, rec.checkOut).toFixed(1) + ' hrs' : ' · still working'}`
+            : 'You have not checked in yet today.';
+          document.getElementById('inBtn').disabled = !!rec;
+          document.getElementById('outBtn').disabled = !rec || !!rec.checkOut;
+
+          // my attendance table
+          document.getElementById('myAtt').innerHTML = recs.length
+            ? recs
+                .map(
+                  (
+                    r,
+                  ) => `<tr><td>${r.date}</td><td>${r.checkIn}</td><td>${r.checkOut || '—'}</td>
+              <td>${r.checkOut ? workedHours(r.checkIn, r.checkOut).toFixed(1) : '—'}</td><td>${pill(r.status)}</td></tr>`,
+                )
+                .join('')
+            : `<tr><td colspan="5" class="empty">No records yet.</td></tr>`;
+
+          // my leaves
+          renderLeavesTable('myLeaves', leavesFor(user.id), false, false);
+        }
+
+        document.getElementById('inBtn').onclick = () => {
+          const r = checkIn(user.id);
+          toast(r.message);
+          refresh();
+        };
+        document.getElementById('outBtn').onclick = () => {
+          const r = checkOut(user.id);
+          toast(r.message);
+          refresh();
+        };
+
+        document.getElementById('leaveForm').addEventListener('submit', (e) => {
+          e.preventDefault();
+          ['type', 'from', 'to'].forEach((k) => setError(k, ''));
+          const res = applyLeave(
+            user.id,
+            document.getElementById('lv_type').value,
+            document.getElementById('lv_from').value,
+            document.getElementById('lv_to').value,
+            document.getElementById('lv_reason').value,
+          );
+          if (!res.ok) {
+            setError('type', res.error);
+            toast(res.error);
+            return;
+          }
+          toast(res.message);
+          e.target.reset();
+          refresh();
+        });
+
+        refresh();
+        initChat(user);
+        renderAnnouncements('annList');
+      }
+    </script>
+  </body>
+</html>

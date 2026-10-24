@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin dashboard · HCM Lite</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <div id="nav-mount"></div>
+    <main>
+      <div class="page-head">
+        <div>
+          <h1 id="hello">Admin dashboard</h1>
+          <p class="muted" id="todayLine"></p>
+        </div>
+        <a class="btn btn-ghost" href="employees.html">+ Add employee</a>
+      </div>
+
+      <!-- totals -->
+      <div class="grid cols-4" id="stats">
+        <div class="card stat">
+          <span class="num blue" id="st_total">0</span
+          ><span class="muted">Employees</span>
+        </div>
+        <div class="card stat">
+          <span class="num green" id="st_present">0</span
+          ><span class="muted">Present today</span>
+        </div>
+        <div class="card stat">
+          <span class="num amber" id="st_late">0</span
+          ><span class="muted">Late today</span>
+        </div>
+        <div class="card stat">
+          <span class="num red" id="st_leave">0</span
+          ><span class="muted">On leave today</span>
+        </div>
+      </div>
+
+      <div class="grid cols-2" style="margin-top: 1rem">
+        <!-- pending leaves -->
+        <div class="card">
+          <div class="page-head">
+            <h3>Pending leave requests</h3>
+            <a class="btn btn-ghost btn-sm" href="leaves.html">View all</a>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Type</th>
+                  <th>Dates</th>
+                  <th>Days</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="pendRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- smart helper -->
+        <div class="card">
+          <h3>Smart helper</h3>
+          <div class="chat">
+            <div class="chat-log" id="chatLog"></div>
+            <div class="chips" id="chips">
+              <button class="chip" data-q="How many employees do we have?">
+                Employees count
+              </button>
+              <button class="chip" data-q="Who is on leave today?">
+                On leave today
+              </button>
+              <button class="chip" data-q="Who was late today?">
+                Late today
+              </button>
+              <button class="chip" data-q="Any pending leave requests?">
+                Pending leaves
+              </button>
+            </div>
+            <div class="chat-input">
+              <input
+                id="chatInput"
+                placeholder="Ask about the company…"
+              /><button class="btn" id="chatSend">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- today's attendance -->
+      <div class="card" style="margin-top: 1rem">
+        <div class="page-head">
+          <h3>Today's attendance</h3>
+          <button class="btn btn-ghost btn-sm" id="expToday">Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Date</th>
+                <th>Check-in</th>
+                <th>Check-out</th>
+                <th>Hours</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="todayRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- announcements -->
+      <div class="card" style="margin-top: 1rem">
+        <h3>Announcements</h3>
+        <div id="annPost"></div>
+        <div id="annList" style="margin-top: 0.8rem"></div>
+      </div>
+    </main>
+
+    <script src="../js/storage.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/attendance.js"></script>
+    <script src="../js/leave.js"></script>
+    <script src="../js/helper.js"></script>
+    <script src="../js/announcements.js"></script>
+    <script>
+      const user = requireRole('admin');
+      if (user) {
+        renderChrome(user, 'Dashboard');
+        document.getElementById('hello').textContent = `Welcome, ${user.name}`;
+
+        function refreshAdminDashboard() {
+          const s = todaySnapshot();
+          const d = new Date();
+          document.getElementById('todayLine').textContent =
+            d.toDateString() + (s.isWorkingDay ? '' : ' · (non-working day)');
+          document.getElementById('st_total').textContent = s.total;
+          document.getElementById('st_present').textContent = s.present;
+          document.getElementById('st_late').textContent = s.late;
+          document.getElementById('st_leave').textContent = s.onLeaveToday;
+
+          // pending leaves (top 5)
+          const pend = getLeaves()
+            .filter((l) => l.status === 'pending')
+            .slice(0, 5);
+          document.getElementById('pendRows').innerHTML = pend.length
+            ? pend
+                .map((l) => {
+                  const e = getUserById(l.employeeId) || {};
+                  return `<tr><td>${escapeHtml(e.name || '—')}</td><td>${escapeHtml(l.type)}</td>
+                <td>${l.from} → ${l.to}</td><td>${l.days}</td>
+                <td><button class="btn btn-green btn-sm" data-ok="${l.id}">Approve</button>
+                <button class="btn btn-red btn-sm" data-no="${l.id}">Reject</button></td></tr>`;
+                })
+                .join('')
+            : `<tr><td colspan="5" class="empty">No pending requests.</td></tr>`;
+          document
+            .getElementById('pendRows')
+            .querySelectorAll('[data-ok]')
+            .forEach(
+              (b) =>
+                (b.onclick = () =>
+                  promptDecision(Number(b.dataset.ok), 'approved')),
+            );
+          document
+            .getElementById('pendRows')
+            .querySelectorAll('[data-no]')
+            .forEach(
+              (b) =>
+                (b.onclick = () =>
+                  promptDecision(Number(b.dataset.no), 'rejected')),
+            );
+
+          // today's attendance table
+          const recs = getAttendance().filter((a) => a.date === todayStr());
+          document.getElementById('todayRows').innerHTML = recs.length
+            ? recs
+                .map((r) => {
+                  const e = getUserById(r.employeeId) || {};
+                  const hrs = r.checkOut
+                    ? workedHours(r.checkIn, r.checkOut).toFixed(1)
+                    : '—';
+                  return `<tr><td>${escapeHtml(e.name || '—')}</td><td>${r.date}</td><td>${r.checkIn}</td>
+                <td>${r.checkOut || '—'}</td><td>${hrs}</td><td>${pill(r.status)}</td></tr>`;
+                })
+                .join('')
+            : `<tr><td colspan="6" class="empty">No check-ins today yet.</td></tr>`;
+        }
+        window.refreshAdminDashboard = refreshAdminDashboard;
+
+        document.getElementById('expToday').onclick = () =>
+          exportAttendanceCSV(getAttendance());
+
+        refreshAdminDashboard();
+        initChat(user);
+        initAnnouncementPost('annPost', 'annList', user);
+        renderAnnouncements('annList');
+      }
+    </script>
+  </body>
+</html>

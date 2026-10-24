@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payslip · HCM Lite</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <div id="nav-mount"></div>
+    <main>
+      <div class="page-head">
+        <h1>Payslip</h1>
+        <div class="toolbar no-print" style="margin: 0">
+          <select id="empSel" class="hidden"></select>
+          <select id="monthSel"></select>
+          <select id="yearSel"></select>
+          <button class="btn" id="printBtn">Print / Save PDF</button>
+        </div>
+      </div>
+      <div id="slip"></div>
+    </main>
+
+    <script src="../js/storage.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/attendance.js"></script>
+    <script src="../js/leave.js"></script>
+    <script src="../js/payslip.js"></script>
+    <script>
+      const user = requireRole('any');
+      if (user) {
+        renderChrome(user, user.role === 'admin' ? 'Payslips' : 'My Payslip');
+        const now = new Date();
+        const monthSel = document.getElementById('monthSel');
+        const yearSel = document.getElementById('yearSel');
+        const empSel = document.getElementById('empSel');
+
+        monthSel.innerHTML = MONTH_NAMES.map(
+          (m, i) =>
+            `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`,
+        ).join('');
+        const years = [];
+        for (let y = now.getFullYear() - 2; y <= now.getFullYear() + 1; y++)
+          years.push(y);
+        yearSel.innerHTML = years
+          .map(
+            (y) =>
+              `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`,
+          )
+          .join('');
+
+        if (user.role === 'admin') {
+          const emps = getEmployees();
+          empSel.classList.remove('hidden');
+          empSel.innerHTML = emps.length
+            ? emps
+                .map(
+                  (e) =>
+                    `<option value="${e.id}">${escapeHtml(e.name)}</option>`,
+                )
+                .join('')
+            : `<option value="">No employees yet</option>`;
+        }
+
+        function render() {
+          const container = document.getElementById('slip');
+          const empId = user.role === 'admin' ? Number(empSel.value) : user.id;
+          const emp = getUserById(empId);
+          if (!emp) {
+            container.innerHTML = `<div class="card empty">No employee selected.</div>`;
+            return;
+          }
+          const p = computePayslip(
+            emp,
+            Number(yearSel.value),
+            Number(monthSel.value),
+          );
+          renderPayslip(container, p);
+        }
+
+        [empSel, monthSel, yearSel].forEach((s) => (s.onchange = render));
+        document.getElementById('printBtn').onclick = () => window.print();
+        render();
+      }
+    </script>
+  </body>
+</html>
