@@ -38,6 +38,25 @@
       </div>
 
       <div class="grid cols-2" style="margin-top: 1rem">
+        <!-- attendance by department -->
+        <div class="card">
+          <h3>Attendance by department</h3>
+          <div class="chart-box"><canvas id="deptChart"></canvas></div>
+        </div>
+        <!-- today's status distribution -->
+        <div class="card">
+          <h3>Today's status</h3>
+          <div class="chart-box"><canvas id="statusChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 14-day trend -->
+      <div class="card" style="margin-top: 1rem">
+        <h3>Check-in trend (14 days)</h3>
+        <div class="chart-box sm"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="grid cols-2" style="margin-top: 1rem">
         <!-- pending leaves -->
         <div class="card">
           <div class="page-head">
@@ -120,12 +139,14 @@
       </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../js/storage.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/attendance.js"></script>
     <script src="../js/leave.js"></script>
     <script src="../js/helper.js"></script>
     <script src="../js/announcements.js"></script>
+    <script src="../js/charts.js"></script>
     <script>
       const user = requireRole('admin');
       if (user) {
@@ -191,10 +212,18 @@
         }
         window.refreshAdminDashboard = refreshAdminDashboard;
 
+        function renderCharts() {
+          renderDeptChart('deptChart');
+          renderStatusDoughnut('statusChart');
+          renderTrend('trendChart');
+        }
+        window.renderCharts = renderCharts;
+
         document.getElementById('expToday').onclick = () =>
           exportAttendanceCSV(getAttendance());
 
         refreshAdminDashboard();
+        renderCharts();
         initChat(user);
         initAnnouncementPost('annPost', 'annList', user);
         renderAnnouncements('annList');

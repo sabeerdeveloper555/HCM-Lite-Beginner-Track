@@ -135,12 +135,14 @@ week?”_, _“What is my payslip?”_.
 
 ## Bonus ideas (already included)
 
-- 🌙 Dark mode toggle
+- 📊 **Charts with Chart.js** — attendance by department, today's status doughnut,
+  14-day check-in trend (admin) and weekly worked-hours (employee)
+- 🌙 Dark mode toggle (charts re-render to match the theme)
 - 📄 Printable payslip (Save as PDF via browser print)
 - 📤 Export attendance to CSV
 - 📢 Announcements (admin posts, employees read)
 
-Ideas you can add next: Chart.js dashboards, camera/face check-in
+Ideas you can add next: camera/face check-in
 (`getUserMedia` + `face-api.js`), geofenced check-in, and an LLM-backed helper.
 
 ---

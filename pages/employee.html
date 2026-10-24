@@ -121,6 +121,11 @@
 
       <!-- my attendance -->
       <div class="card" style="margin-top: 1rem">
+        <h3>Hours this week</h3>
+        <div class="chart-box sm"><canvas id="weekChart"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top: 1rem">
         <h3>My attendance</h3>
         <div class="table-wrap">
           <table>
@@ -164,6 +169,7 @@
       </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../js/storage.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/attendance.js"></script>
@@ -171,6 +177,7 @@
     <script src="../js/payslip.js"></script>
     <script src="../js/helper.js"></script>
     <script src="../js/announcements.js"></script>
+    <script src="../js/charts.js"></script>
     <script>
       const user = requireRole('employee');
       if (user) {
@@ -230,7 +237,11 @@
 
           // my leaves
           renderLeavesTable('myLeaves', leavesFor(user.id), false, false);
+
+          // weekly hours chart
+          renderWeeklyHours('weekChart', user.id);
         }
+        window.renderCharts = () => renderWeeklyHours('weekChart', user.id);
 
         document.getElementById('inBtn').onclick = () => {
           const r = checkIn(user.id);

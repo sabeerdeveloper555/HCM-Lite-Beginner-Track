@@ -119,8 +119,8 @@ function renderChrome(user, activeLabel) {
         <button class="btn btn-ghost btn-sm" id="pwdBtn">Password</button>
         <button class="btn btn-sm" id="logoutBtn">Logout</button>
       </div>
-    </header>
-    <button class="hamburger" id="hamburger">☰</button>`;
+      <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+    </header>`;
 
   document.getElementById('logoutBtn').onclick = logout;
   document.getElementById('pwdBtn').onclick = () => openPasswordModal(user);
@@ -136,6 +136,7 @@ function renderChrome(user, activeLabel) {
       'hcm_theme',
       root.classList.contains('dark') ? 'dark' : 'light',
     );
+    if (typeof window.renderCharts === 'function') window.renderCharts();
   };
 }
 
